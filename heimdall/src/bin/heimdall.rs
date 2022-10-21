@@ -1,6 +1,7 @@
 use axum::extract::Extension;
-use axum::routing;
+use axum::handler::Handler;
 use axum::Router;
+use axum::routing;
 use axum::Server;
 use clap::Parser;
 use heimdall::handlers;
@@ -10,6 +11,7 @@ use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 use tower::ServiceBuilder;
+use tower_http::auth::RequireAuthorizationLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
@@ -29,9 +31,14 @@ async fn main() {
     let store = DiskStore::new(args.module_dir);
     let registry = Registry::new(Box::new(store), args.max_cached_modules);
 
+    let auth_layer = RequireAuthorizationLayer::bearer(args.api_key.as_str());
+
+    let handler_store = (handlers::store).layer(&auth_layer);
+    let handler_delete = (handlers::delete).layer(&auth_layer);
+
     let app = Router::new()
-        .route("/store/:module_id", routing::post(handlers::store))
-        .route("/delete/:module_id", routing::delete(handlers::delete))
+        .route("/store/:module_id", routing::post(handler_store))
+        .route("/delete/:module_id", routing::delete(handler_delete))
         .route("/execute/:module_id", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
@@ -58,6 +65,10 @@ pub struct Args {
     /// Port to listen on
     #[arg(long = "port")]
     pub port: u16,
+
+    // API key for authenticated routes
+    #[arg(long = "key")]
+    pub api_key: String,
 
     /// Maximum number of modules to allow in cache
     #[arg(long = "cache")]
