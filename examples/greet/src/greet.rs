@@ -42,7 +42,7 @@ impl Op for AddOne {
 #[cfg(feature = "local")]
 #[tokio::main]
 async fn main() {
-    use bifrost::dispatcher::Dispatcher;
+    use bifrost::dispatcher_native::Dispatcher;
 
     let heimdall_execute_url = String::from("http://localhost:8080/execute/greet-server.wasm");
     let dispatcher = Dispatcher::create(heimdall_execute_url);
