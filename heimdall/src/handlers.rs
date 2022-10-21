@@ -2,11 +2,13 @@
 use crate::registry::Registry;
 use crate::runtime;
 use crate::types::*;
-use rocket::serde::json::Json;
-use rocket::State;
+use axum::extract::{Extension, Json, Path};
+use std::sync::Arc;
 
-#[rocket::post("/<module_name>", format = "json", data = "<op>")]
-pub async fn recv(module_name: &str, op: Json<(String, serde_json::Value)>, registry: &State<Registry>) -> ExecutionResult {
-    let (label, json) = op.into_inner();
-    runtime::exec(registry, module_name, label.as_str(), &json)
+pub async fn recv(
+    Path(module_id): Path<String>,
+    Json((label, json)): Json<(String, serde_json::Value)>,
+    Extension(registry): Extension<Arc<Registry>>
+) -> ExecutionResult {
+    runtime::exec(&registry, &module_id, label.as_str(), &json)
 }

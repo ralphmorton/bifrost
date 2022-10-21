@@ -1,8 +1,6 @@
 
-use rocket::http;
-use rocket::request;
-use rocket::response;
-use std::io::Cursor;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 
 pub trait Resolver {
     fn resolve(&self, module_id: &str) -> Option<Vec<u8>>;
@@ -14,34 +12,18 @@ pub enum ExecutionResult {
     RuntimeExecutionError
 }
 
-impl<'a> response::Responder<'a, 'a> for ExecutionResult {
-    fn respond_to(self, _: &request::Request) -> response::Result<'a> {
+impl IntoResponse for ExecutionResult {
+    fn into_response(self) -> Response {
         match self {
             Self::Success(json) => {
-                response::Response::build()
-                    .header(http::ContentType::JSON)
-                    .status(http::Status::Ok)
-                    .sized_body(json.len(), Cursor::new(json))
-                    .ok()
+                (StatusCode::OK, json).into_response()
             },
             Self::ModuleResolutionError => {
-                let err = "Module resolution error";
-
-                response::Response::build()
-                    .header(http::ContentType::JSON)
-                    .status(http::Status::InternalServerError)
-                    .sized_body(err.len(), Cursor::new(err))
-                    .ok()
+                (StatusCode::INTERNAL_SERVER_ERROR, "Module resolution error").into_response()
             },
             Self::RuntimeExecutionError => {
-                let err = "Runtime execution error";
-
-                response::Response::build()
-                    .header(http::ContentType::JSON)
-                    .status(http::Status::InternalServerError)
-                    .sized_body(err.len(), Cursor::new(err))
-                    .ok()
-            }
+                (StatusCode::INTERNAL_SERVER_ERROR, "Runtime execution error").into_response()
+            },
         }
     }
 }
