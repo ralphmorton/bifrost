@@ -1,2 +1,3 @@
 [workspace]
 members = ["bifrost", "heimdall"]
+exclude = ["examples"]

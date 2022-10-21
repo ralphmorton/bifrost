@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = { version = "*", optional = true }
 reqwest = { version = "*", features = ["json"], optional = true }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
@@ -14,14 +13,4 @@ tokio = { version = "*", features = ["full"], optional = true }
 
 [features]
 local = ["reqwest", "tokio"]
-remote = ["lazy_static"]
-
-[[example]]
-name = "greet-client"
-path = "examples/greet.rs"
-required-features = ["local"]
-
-[[example]]
-name = "greet-server"
-path = "examples/greet.rs"
-required-features = ["remote"]
+remote = []
