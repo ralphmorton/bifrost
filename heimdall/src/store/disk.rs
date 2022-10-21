@@ -1,17 +1,17 @@
-use crate::types::Resolver;
+use crate::types::Store;
 use log::{debug, warn};
 
-pub struct DiskResolver {
+pub struct DiskStore {
     dir: String,
 }
 
-impl DiskResolver {
+impl DiskStore {
     pub fn new(dir: String) -> Self {
-        DiskResolver { dir }
+        DiskStore { dir }
     }
 }
 
-impl Resolver for DiskResolver {
+impl Store for DiskStore {
     fn retrieve(&self, module_id: &str) -> Option<Vec<u8>> {
         let path = std::path::Path::new(&self.dir).join(module_id);
 

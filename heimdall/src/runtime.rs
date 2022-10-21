@@ -1,5 +1,5 @@
 use crate::registry::Registry;
-use crate::types::*;
+use crate::types::ExecutionResult;
 use log::{debug, error};
 use std::string::ToString;
 use wasmtime::*;

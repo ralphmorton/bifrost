@@ -5,7 +5,7 @@ use axum::Server;
 use clap::Parser;
 use heimdall::handlers;
 use heimdall::registry::Registry;
-use heimdall::resolver::disk::DiskResolver;
+use heimdall::store::disk::DiskStore;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -25,8 +25,8 @@ async fn main() {
 
     tracing_subscriber::fmt::init();
 
-    let resolver = DiskResolver::new(args.module_dir);
-    let registry = Registry::new(Box::new(resolver), args.max_cached_modules);
+    let store = DiskStore::new(args.module_dir);
+    let registry = Registry::new(Box::new(store), args.max_cached_modules);
 
     let app = Router::new()
         .route("/:module_id", routing::post(handlers::recv))

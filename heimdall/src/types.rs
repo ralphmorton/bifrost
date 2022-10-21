@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-pub trait Resolver {
+pub trait Store {
     fn retrieve(&self, module_id: &str) -> Option<Vec<u8>>;
 }
 

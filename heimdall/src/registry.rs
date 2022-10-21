@@ -1,4 +1,4 @@
-use crate::types::Resolver;
+use crate::types::Store;
 use log::debug;
 use moka::sync::Cache;
 use std::sync::Arc;
@@ -7,14 +7,14 @@ use wasmtime::{Engine, Module};
 pub type ModuleRef = Arc<(Engine, Module)>;
 
 pub struct Registry {
-    resolver: Box<dyn Resolver + Send + Sync>,
+    store: Box<dyn Store + Send + Sync>,
     modules: Cache<String, ModuleRef>,
 }
 
 impl Registry {
-    pub fn new(resolver: Box<dyn Resolver + Send + Sync>, max_cached_modules: u64) -> Self {
+    pub fn new(store: Box<dyn Store + Send + Sync>, max_cached_modules: u64) -> Self {
         Registry {
-            resolver: resolver,
+            store: store,
             modules: Cache::new(max_cached_modules),
         }
     }
@@ -29,7 +29,7 @@ impl Registry {
     }
 
     fn register(&self, module_id: &str) -> Option<ModuleRef> {
-        let binary = self.resolver.retrieve(module_id)?;
+        let binary = self.store.retrieve(module_id)?;
 
         let engine = Engine::default();
         let module = Module::from_binary(&engine, &binary).ok()?;
