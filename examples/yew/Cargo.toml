@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 bifrost = { path = "../../bifrost" }
+gloo = { version = "0.8.0", optional = true }
+gloo-net = { version = "0.2.4", optional = true }
 js-sys = { version = "0.3", optional = true }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
@@ -15,7 +17,7 @@ wasm-bindgen-futures = { version = "0.4.33", optional = true }
 yew = { version = "0.19.3", optional = true }
 
 [features]
-local = ["bifrost/local-browser", "js-sys", "wasm-bindgen", "wasm-bindgen-futures", "yew"]
+local = ["bifrost/local-browser", "gloo", "gloo-net", "js-sys", "wasm-bindgen", "wasm-bindgen-futures", "yew"]
 remote = ["bifrost/remote"]
 
 [[bin]]

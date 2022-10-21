@@ -10,6 +10,7 @@ use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 use tower::ServiceBuilder;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
@@ -33,7 +34,8 @@ async fn main() {
         .route("/delete/:module_id", routing::delete(handlers::delete))
         .route("/execute/:module_id", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .layer(CorsLayer::permissive());
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(args.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),

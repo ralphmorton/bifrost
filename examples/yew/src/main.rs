@@ -1,11 +1,13 @@
-use bifrost::op::Op;
+use bifrost_example_yew::Increment;
 
 #[cfg(feature = "local")]
 use bifrost_example_yew::client::App;
 
 #[cfg(feature = "remote")]
+use bifrost::op::Op;
+#[cfg(feature = "remote")]
+use serde::Serialize;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "local")]
 fn main() {
@@ -13,4 +15,4 @@ fn main() {
 }
 
 #[cfg(feature = "remote")]
-bifrost::entrypoint!();
+bifrost::entrypoint!(Increment);

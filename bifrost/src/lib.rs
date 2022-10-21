@@ -11,6 +11,8 @@ macro_rules! entrypoint {
     ( $( $typ:ty ),* ) => {
         fn main() {
             use bifrost::op::Op;
+            use serde::Serialize;
+            use serde::de::DeserializeOwned;
 
             let args : Vec<String> = std::env::args().collect();
 

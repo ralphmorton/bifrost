@@ -1,69 +1,79 @@
-use js_sys::Date;
-use yew::{html, Component, Context, Html};
+use crate::Increment;
+use bifrost::dispatcher_browser::{Dispatcher, Response};
+use std::sync::Arc;
+use wasm_bindgen_futures::spawn_local;
+use yew::prelude::*;
 
-// Define the possible messages which can be sent to the component
-pub enum Msg {
-    Increment,
-    Decrement,
+struct State {
+    value: Increment,
+    error: Option<String>
 }
 
-pub struct App {
-    value: i64, // This will store the counter value
+#[function_component(App)]
+pub fn app() -> Html {
+    let dispatcher = Arc::new(Dispatcher::create("http://localhost:8081/execute/server.wasm".to_string()));
+
+    let initial_state = State {
+        value: Increment { i: 0 },
+        error: None
+    };
+
+    let state = use_state(|| initial_state);
+
+    let increment = {
+        let state = state.clone();
+
+        Callback::once(move |_| inc(dispatcher, state.clone()))
+    };
+
+    html! {
+        <div>
+            <h1>{state.value.i}</h1>
+            <div style="mb-3">{format!("{:?}", &state.error)}</div>
+            <button onclick={increment}>
+                { "+" }
+            </button>
+        </div>
+    }
 }
 
-impl Component for App {
-    type Message = Msg;
-    type Properties = ();
+fn inc(dispatcher: Arc<Dispatcher>, state: UseStateHandle<State>) {
+    spawn_local(async move {
+        let response = dispatcher.send(&state.value).await;
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self { value: 0 }
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            Msg::Increment => {
-                self.value += 1;
-                true // Return true to cause the displayed change to update
-            }
-            Msg::Decrement => {
-                self.value -= 1;
-                true
+        match response {
+            Response::Success(v) => {
+                state.set(
+                    State {
+                        value: Increment { i: v },
+                        error: None
+                    }
+                )
+            },
+            Response::NetworkError(e) => {
+                state.set(
+                    State {
+                        value: Increment { i: state.value.i },
+                        error: Some(format!("Network error: {}", e))
+                    }
+                )
+            },
+            Response::RequestError(status_code, e) => {
+                state.set(
+                    State {
+                        value: Increment { i: state.value.i },
+                        error: Some(format!("Request error: {}/{}", status_code, e))
+                    }
+                )
+            },
+            Response::ParseError(e) => {
+                state.set(
+                    State {
+                        value: Increment { i: state.value.i },
+                        error: Some(format!("Parse error: {}", e))
+                    }
+                )
             }
         }
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <div>
-                <div class="panel">
-                    // A button to send the Increment message
-                    <button class="button" onclick={ctx.link().callback(|_| Msg::Increment)}>
-                        { "+1" }
-                    </button>
-
-                    // A button to send the Decrement message
-                    <button onclick={ctx.link().callback(|_| Msg::Decrement)}>
-                        { "-1" }
-                    </button>
-
-                    // A button to send two Increment messages
-                    <button onclick={ctx.link().batch_callback(|_| vec![Msg::Increment, Msg::Increment])}>
-                        { "+1, +1" }
-                    </button>
-
-                </div>
-
-                // Display the current value of the counter
-                <p class="counter">
-                    { self.value }
-                </p>
-
-                // Display the current date and time the page was rendered
-                <p class="footer">
-                    { "Rendered: " }
-                    { String::from(Date::new_0().to_string()) }
-                </p>
-            </div>
-        }
-    }
+    });
 }

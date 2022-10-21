@@ -29,6 +29,8 @@ name = "bifrost-example-yew"
 version = "0.1.0"
 dependencies = [
  "bifrost",
+ "gloo 0.8.0",
+ "gloo-net",
  "js-sys",
  "serde",
  "serde_json",
