@@ -1,4 +1,4 @@
-use crate::types::Store;
+use crate::store::Store;
 use log::debug;
 use moka::sync::Cache;
 use std::sync::Arc;
@@ -17,6 +17,18 @@ impl Registry {
             store: store,
             modules: Cache::new(max_cached_modules),
         }
+    }
+
+    pub fn add(&self, module_id: &str, binary: Vec<u8>) -> bool {
+        debug!("adding module to registry: {}", module_id);
+
+        self.store.store(module_id, binary)
+    }
+
+    pub fn delete(&self, module_id: &str) -> bool {
+        debug!("deleting module from registry: {}", module_id);
+
+        self.store.delete(module_id)
     }
 
     pub fn resolve(&self, module_id: &str) -> Option<ModuleRef> {

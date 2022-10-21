@@ -1,5 +1,6 @@
 use crate::registry::Registry;
-use crate::types::ExecutionResult;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use log::{debug, error};
 use std::string::ToString;
 use wasmtime::*;
@@ -96,3 +97,24 @@ where
         }
     }
 }
+
+pub enum ExecutionResult {
+    Success(String),
+    ModuleResolutionError,
+    RuntimeExecutionError,
+}
+
+impl IntoResponse for ExecutionResult {
+    fn into_response(self) -> Response {
+        match self {
+            Self::Success(json) => (StatusCode::OK, json).into_response(),
+            Self::ModuleResolutionError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Module resolution error").into_response()
+            }
+            Self::RuntimeExecutionError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Runtime execution error").into_response()
+            }
+        }
+    }
+}
+

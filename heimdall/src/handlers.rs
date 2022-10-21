@@ -1,15 +1,66 @@
 use crate::registry::Registry;
 use crate::runtime;
-use crate::types::*;
-use axum::extract::{Extension, Json, Path};
-use log::debug;
+use axum::extract::{Extension, Json, Multipart, Path};
+use axum::http::StatusCode;
+use log::{debug, error};
 use std::sync::Arc;
+
+pub async fn store(
+    Path(module_id): Path<String>,
+    mut multipart: Multipart,
+    Extension(registry): Extension<Arc<Registry>>,
+) -> StatusCode {
+    debug!("processing upload for module {}", module_id);
+
+    let multipart_field = multipart
+        .next_field()
+        .await
+        .ok()
+        .flatten();
+
+    let binary = match multipart_field {
+        Some(f) => f.bytes().await.ok(),
+        None => None
+    };
+
+    match binary {
+        None => {
+            error!("unable to extract module for upload");
+            StatusCode::BAD_REQUEST
+        },
+        Some(bytes) => {
+            debug!("extracted module binary: {} bytes", bytes.len());
+            let result = registry.add(module_id.as_str(), bytes.to_vec());
+
+            if result {
+                StatusCode::NO_CONTENT
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        },
+    }
+}
+
+pub async fn delete(
+    Path(module_id): Path<String>,
+    Extension(registry): Extension<Arc<Registry>>,
+) -> StatusCode {
+    debug!("deleting module {}", module_id);
+
+    let result = registry.delete(module_id.as_str());
+
+    if result {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
 
 pub async fn recv(
     Path(module_id): Path<String>,
     Json((label, json)): Json<(String, serde_json::Value)>,
     Extension(registry): Extension<Arc<Registry>>,
-) -> ExecutionResult {
+) -> runtime::ExecutionResult {
     debug!(
         "processing request for {}: ({}, {:?})",
         module_id, label, json

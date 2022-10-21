@@ -29,7 +29,9 @@ async fn main() {
     let registry = Registry::new(Box::new(store), args.max_cached_modules);
 
     let app = Router::new()
-        .route("/:module_id", routing::post(handlers::recv))
+        .route("/store/:module_id", routing::post(handlers::store))
+        .route("/delete/:module_id", routing::delete(handlers::delete))
+        .route("/execute/:module_id", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
