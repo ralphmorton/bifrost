@@ -4,6 +4,10 @@ use rocket::request;
 use rocket::response;
 use std::io::Cursor;
 
+pub trait Resolver {
+    fn resolve(&self, module_id: &str) -> Option<Vec<u8>>;
+}
+
 pub enum ExecutionResult {
     Success(String),
     ModuleResolutionError,

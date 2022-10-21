@@ -1,4 +1,5 @@
 
+use crate::types::Resolver;
 use moka::sync::Cache;
 use std::sync::Arc;
 use wasmtime::{Engine, Module};
@@ -6,34 +7,33 @@ use wasmtime::{Engine, Module};
 pub type ModuleRef = Arc<(Engine, Module)>;
 
 pub struct Registry {
-    module_dir: String,
+    resolver: Box<dyn Resolver + Send + Sync>,
     modules: Cache<String, ModuleRef>
 }
 
 impl Registry {
-    pub fn new(module_dir: String, max_cached_modules: u64) -> Self {
+    pub fn new(resolver: Box<dyn Resolver + Send + Sync>, max_cached_modules: u64) -> Self {
         Registry {
-            module_dir,
+            resolver: resolver,
             modules: Cache::new(max_cached_modules)
         }
     }
 
-    pub fn resolve(&self, module_name: &str) -> Option<ModuleRef> {
+    pub fn resolve(&self, module_id: &str) -> Option<ModuleRef> {
         self.modules
-            .get(module_name).map(|arc| arc.clone())
-            .or_else(|| self.register(module_name))
+            .get(module_id).map(|arc| arc.clone())
+            .or_else(|| self.register(module_id))
     }
 
-    fn register(&self, module_name: &str) -> Option<ModuleRef> {
-        let mod_path = std::path::Path::new(&self.module_dir).join(module_name);
-        let mod_path_str = mod_path.to_str()?;
+    fn register(&self, module_id: &str) -> Option<ModuleRef> {
+        let binary = self.resolver.resolve(module_id)?;
 
         let engine = Engine::default();
-        let module = Module::from_file(&engine, mod_path_str).ok()?;
+        let module = Module::from_binary(&engine, &binary).ok()?;
 
         let mod_ref = Arc::new((engine, module));
 
-        self.modules.insert(module_name.to_string(), mod_ref.clone());
+        self.modules.insert(module_id.to_string(), mod_ref.clone());
 
         Some(mod_ref)
     }
