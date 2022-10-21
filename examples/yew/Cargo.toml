@@ -1,0 +1,29 @@
+[package]
+name = "bifrost-example-yew"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bifrost = { path = "../../bifrost" }
+js-sys = { version = "0.3", optional = true }
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4.33", optional = true }
+yew = { version = "0.19.3", optional = true }
+
+[features]
+local = ["bifrost/local-browser", "js-sys", "wasm-bindgen", "wasm-bindgen-futures", "yew"]
+remote = ["bifrost/remote"]
+
+[[bin]]
+name = "client"
+path = "src/main.rs"
+required-features = ["local"]
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+required-features = ["remote"]
