@@ -1,5 +1,5 @@
 use crate::store::Store;
-use log::debug;
+use log::{debug, error};
 use moka::sync::Cache;
 use std::sync::Arc;
 use wasmtime::{Engine, Module};
@@ -21,13 +21,11 @@ impl Registry {
 
     pub fn add(&self, module_id: &str, binary: Vec<u8>) -> bool {
         debug!("adding module to registry: {}", module_id);
-
         self.store.store(module_id, binary)
     }
 
     pub fn delete(&self, module_id: &str) -> bool {
         debug!("deleting module from registry: {}", module_id);
-
         self.store.delete(module_id)
     }
 
@@ -44,12 +42,17 @@ impl Registry {
         let binary = self.store.retrieve(module_id)?;
 
         let engine = Engine::default();
-        let module = Module::from_binary(&engine, &binary).ok()?;
 
-        let mod_ref = Arc::new((engine, module));
-
-        self.modules.insert(module_id.to_string(), mod_ref.clone());
-
-        Some(mod_ref)
+        match Module::from_binary(&engine, &binary) {
+            Err(e) => {
+                error!("unable to initialize module from store: {:?}", e);
+                None
+            },
+            Ok(module) => {
+                let mod_ref = Arc::new((engine, module));
+                self.modules.insert(module_id.to_string(), mod_ref.clone());
+                Some(mod_ref)
+            },
+        }
     }
 }
