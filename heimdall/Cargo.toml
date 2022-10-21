@@ -7,11 +7,16 @@ edition = "2021"
 
 [dependencies]
 axum = "0.5.17"
-clap = { version = "*", features = ["derive"] }
-moka = "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
-tokio = { version = "*", features = ["full"] }
+clap = { version = "4.0.17", features = ["derive"] }
+log = "0.4.17"
+moka = "0.9.4"
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.87"
+tokio = { version = "1.21.2", features = ["full"] }
+tower = "0.4.13"
+tower-http = { version = "0.3.4", features = ["trace"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
 wasi-common = "2.0.0"
 wasmtime = "2.0.0"
 wasmtime-wasi = "2.0.0"

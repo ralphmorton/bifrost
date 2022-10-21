@@ -1,5 +1,6 @@
 
 use crate::types::Resolver;
+use log::debug;
 use moka::sync::Cache;
 use std::sync::Arc;
 use wasmtime::{Engine, Module};
@@ -20,6 +21,8 @@ impl Registry {
     }
 
     pub fn resolve(&self, module_id: &str) -> Option<ModuleRef> {
+        debug!("retrieving module from registry: {}", module_id);
+
         self.modules
             .get(module_id).map(|arc| arc.clone())
             .or_else(|| self.register(module_id))
