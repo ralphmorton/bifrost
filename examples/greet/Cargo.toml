@@ -9,10 +9,10 @@ edition = "2021"
 bifrost = { path = "../../bifrost" }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
-tokio = { version = "*", features = ["full"] }
+tokio = { version = "*", features = ["full"], optional = true }
 
 [features]
-local = ["bifrost/local"]
+local = ["bifrost/local", "tokio"]
 remote = ["bifrost/remote"]
 
 [[bin]]
