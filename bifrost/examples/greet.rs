@@ -1,12 +1,11 @@
-
 use bifrost::op::Op;
-use serde::{Deserialize, Serialize};
 #[cfg(feature = "remote")]
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Greet {
-    name: String
+    name: String,
 }
 
 impl Op for Greet {
@@ -24,7 +23,7 @@ impl Op for Greet {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct AddOne {
-    i: i32
+    i: i32,
 }
 
 impl Op for AddOne {
@@ -49,7 +48,9 @@ async fn main() {
     let dispatcher = Dispatcher::create(heimdall_url);
 
     println!("Greet:");
-    let op = Greet { name: String::from("Bifrost") };
+    let op = Greet {
+        name: String::from("Bifrost"),
+    };
     let result = dispatcher.send(&op).await;
     println!("Got result: {:?}", result);
 
@@ -60,7 +61,4 @@ async fn main() {
 }
 
 #[cfg(feature = "remote")]
-bifrost::entrypoint!(
-    Greet,
-    AddOne
-);
+bifrost::entrypoint!(Greet, AddOne);

@@ -1,4 +1,3 @@
-
 use axum::extract::Extension;
 use axum::routing;
 use axum::Router;
@@ -29,15 +28,14 @@ async fn main() {
     let resolver = DiskResolver::new(args.module_dir);
     let registry = Registry::new(Box::new(resolver), args.max_cached_modules);
 
-    let app =
-        Router::new()
+    let app = Router::new()
         .route("/:module_id", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(args.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
-        args.port
+        args.port,
     ));
 
     Server::bind(&sock_addr)
@@ -67,5 +65,5 @@ pub struct Args {
 
     /// Log level
     #[arg(long = "log", default_value = "debug")]
-    log_level: String
+    log_level: String,
 }

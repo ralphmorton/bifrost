@@ -1,7 +1,6 @@
-
-pub mod op;
 #[cfg(feature = "local")]
 pub mod dispatcher;
+pub mod op;
 
 #[macro_export]
 macro_rules! entrypoint {

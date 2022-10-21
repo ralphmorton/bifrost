@@ -1,16 +1,13 @@
-
 use crate::types::Resolver;
-use log::{debug,warn};
+use log::{debug, warn};
 
 pub struct DiskResolver {
-    dir: String
+    dir: String,
 }
 
 impl DiskResolver {
     pub fn new(dir: String) -> Self {
-        DiskResolver {
-            dir
-        }
+        DiskResolver { dir }
     }
 }
 

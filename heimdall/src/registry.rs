@@ -1,4 +1,3 @@
-
 use crate::types::Resolver;
 use log::debug;
 use moka::sync::Cache;
@@ -9,14 +8,14 @@ pub type ModuleRef = Arc<(Engine, Module)>;
 
 pub struct Registry {
     resolver: Box<dyn Resolver + Send + Sync>,
-    modules: Cache<String, ModuleRef>
+    modules: Cache<String, ModuleRef>,
 }
 
 impl Registry {
     pub fn new(resolver: Box<dyn Resolver + Send + Sync>, max_cached_modules: u64) -> Self {
         Registry {
             resolver: resolver,
-            modules: Cache::new(max_cached_modules)
+            modules: Cache::new(max_cached_modules),
         }
     }
 
@@ -24,7 +23,8 @@ impl Registry {
         debug!("retrieving module from registry: {}", module_id);
 
         self.modules
-            .get(module_id).map(|arc| arc.clone())
+            .get(module_id)
+            .map(|arc| arc.clone())
             .or_else(|| self.register(module_id))
     }
 

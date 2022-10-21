@@ -1,9 +1,8 @@
-
 pub trait Op {
-  type Output;
+    type Output;
 
-  fn id() -> &'static str;
+    fn id() -> &'static str;
 
-  #[cfg(feature = "remote")]
-  fn execute(&self) -> Self::Output;
+    #[cfg(feature = "remote")]
+    fn execute(&self) -> Self::Output;
 }
