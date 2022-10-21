@@ -1,9 +1,4 @@
-#[cfg(feature = "local-native")]
-pub mod dispatcher_native;
-
-#[cfg(feature = "local-browser")]
-pub mod dispatcher_browser;
-
+pub mod dispatcher;
 pub mod op;
 
 #[macro_export]

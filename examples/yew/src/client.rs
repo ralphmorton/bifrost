@@ -1,5 +1,5 @@
 use crate::Increment;
-use bifrost::dispatcher_browser::{Dispatcher, Response};
+use bifrost::dispatcher::{Dispatcher, Response};
 use std::sync::Arc;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
