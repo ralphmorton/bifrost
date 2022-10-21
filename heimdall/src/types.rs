@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
 pub trait Resolver {
-    fn resolve(&self, module_id: &str) -> Option<Vec<u8>>;
+    fn retrieve(&self, module_id: &str) -> Option<Vec<u8>>;
 }
 
 pub enum ExecutionResult {

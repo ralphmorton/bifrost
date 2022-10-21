@@ -15,7 +15,7 @@ impl DiskResolver {
 }
 
 impl Resolver for DiskResolver {
-    fn resolve(&self, module_id: &str) -> Option<Vec<u8>> {
+    fn retrieve(&self, module_id: &str) -> Option<Vec<u8>> {
         let path = std::path::Path::new(&self.dir).join(module_id);
 
         debug!("resolving module at {:?}", path);

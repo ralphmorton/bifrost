@@ -29,7 +29,7 @@ impl Registry {
     }
 
     fn register(&self, module_id: &str) -> Option<ModuleRef> {
-        let binary = self.resolver.resolve(module_id)?;
+        let binary = self.resolver.retrieve(module_id)?;
 
         let engine = Engine::default();
         let module = Module::from_binary(&engine, &binary).ok()?;
