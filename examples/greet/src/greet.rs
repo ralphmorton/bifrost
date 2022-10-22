@@ -1,7 +1,7 @@
 use bifrost::op::Op;
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "remote")]
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Greet {
