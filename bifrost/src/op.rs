@@ -3,6 +3,6 @@ pub trait Op {
 
     fn id() -> &'static str;
 
-    #[cfg(feature = "remote")]
+    #[cfg(any(feature = "remote", feature = "debug"))]
     fn execute(&self) -> Self::Output;
 }

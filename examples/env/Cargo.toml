@@ -14,6 +14,12 @@ tokio = { version = "*", features = ["full"], optional = true }
 [features]
 local = ["bifrost/local-native", "tokio"]
 remote = ["bifrost/remote"]
+debug = ["bifrost/debug", "tokio"]
+
+[[bin]]
+name = "env-debug"
+path = "src/env.rs"
+required-features = ["debug"]
 
 [[bin]]
 name = "env-client"

@@ -1,4 +1,4 @@
-#[cfg(any(feature = "local-browser", feature = "local-native"))]
+#[cfg(any(feature = "local-browser", feature = "local-native", feature = "debug"))]
 pub mod dispatcher;
 pub mod op;
 

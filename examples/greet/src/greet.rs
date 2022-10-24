@@ -15,7 +15,7 @@ impl Op for Greet {
         "greet"
     }
 
-    #[cfg(feature = "remote")]
+    #[cfg(any(feature = "remote", feature = "debug"))]
     fn execute(&self) -> Self::Output {
         format!("Hi there, {}", self.name)
     }
@@ -33,13 +33,13 @@ impl Op for AddOne {
         "add_one"
     }
 
-    #[cfg(feature = "remote")]
+    #[cfg(any(feature = "remote", feature = "debug"))]
     fn execute(&self) -> Self::Output {
         self.i + 1
     }
 }
 
-#[cfg(feature = "local")]
+#[cfg(any(feature = "local", feature = "debug"))]
 #[tokio::main]
 async fn main() {
     use bifrost::dispatcher::Dispatcher;

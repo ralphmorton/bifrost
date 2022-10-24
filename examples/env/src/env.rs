@@ -15,13 +15,13 @@ impl Op for GetEnvVar {
         "get_env_var"
     }
 
-    #[cfg(feature = "remote")]
+    #[cfg(any(feature = "remote", feature = "debug"))]
     fn execute(&self) -> Self::Output {
         std::env::var(&self.var).ok()
     }
 }
 
-#[cfg(feature = "local")]
+#[cfg(any(feature = "local", feature = "debug"))]
 #[tokio::main]
 async fn main() {
     use bifrost::dispatcher::Dispatcher;

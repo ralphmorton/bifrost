@@ -14,6 +14,12 @@ tokio = { version = "*", features = ["full"], optional = true }
 [features]
 local = ["bifrost/local-native", "tokio"]
 remote = ["bifrost/remote"]
+debug = ["bifrost/debug", "tokio"]
+
+[[bin]]
+name = "greet-debug"
+path = "src/greet.rs"
+required-features = ["debug"]
 
 [[bin]]
 name = "greet-client"

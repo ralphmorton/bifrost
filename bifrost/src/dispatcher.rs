@@ -86,3 +86,18 @@ impl Dispatcher {
         }
     }
 }
+
+#[cfg(feature = "debug")]
+impl Dispatcher {
+    pub fn create(url: String) -> Self {
+        Dispatcher { url }
+    }
+
+    pub async fn send<T>(&self, op: &T) -> Response<T::Output>
+    where
+        T: Op + Serialize,
+        T::Output: DeserializeOwned,
+    {
+        Response::Success(op.execute())
+    }
+}
