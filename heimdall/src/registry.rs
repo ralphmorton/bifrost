@@ -4,11 +4,17 @@ use moka::sync::Cache;
 use std::sync::Arc;
 use wasmtime::{Engine, Module};
 
-pub type ModuleRef = Arc<(Engine, Module)>;
+pub type EnvironmentRef = Arc<Environment>;
+
+pub struct Environment {
+    pub engine: Engine,
+    pub module: Module,
+    pub variables: Vec<(String, String)>
+}
 
 pub struct Registry {
     store: Box<dyn Store + Send + Sync>,
-    modules: Cache<String, ModuleRef>,
+    modules: Cache<String, EnvironmentRef>,
 }
 
 impl Registry {
@@ -24,12 +30,17 @@ impl Registry {
         self.store.store(module_id, binary)
     }
 
+    pub fn attach_variables(&self, module_id: &str, variables: Vec<(String, String)>) -> bool {
+        debug!("attaching env vars to registered module: {}", module_id);
+        self.store.attach_variables(module_id, variables)
+    }
+
     pub fn delete(&self, module_id: &str) -> bool {
         debug!("deleting module from registry: {}", module_id);
         self.store.delete(module_id)
     }
 
-    pub fn resolve(&self, module_id: &str) -> Option<ModuleRef> {
+    pub fn resolve(&self, module_id: &str) -> Option<EnvironmentRef> {
         debug!("retrieving module from registry: {}", module_id);
 
         self.modules
@@ -38,8 +49,8 @@ impl Registry {
             .or_else(|| self.register(module_id))
     }
 
-    fn register(&self, module_id: &str) -> Option<ModuleRef> {
-        let binary = self.store.retrieve(module_id)?;
+    fn register(&self, module_id: &str) -> Option<EnvironmentRef> {
+        let (binary, vars) = self.store.retrieve(module_id)?;
 
         let engine = Engine::default();
 
@@ -49,9 +60,15 @@ impl Registry {
                 None
             },
             Ok(module) => {
-                let mod_ref = Arc::new((engine, module));
-                self.modules.insert(module_id.to_string(), mod_ref.clone());
-                Some(mod_ref)
+                let env_ref = Arc::new(
+                    Environment {
+                        engine,
+                        module,
+                        variables: vars
+                    }
+                );
+                self.modules.insert(module_id.to_string(), env_ref.clone());
+                Some(env_ref)
             },
         }
     }

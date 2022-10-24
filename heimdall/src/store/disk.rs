@@ -1,5 +1,6 @@
 use crate::store::Store;
 use log::{debug, error, warn};
+use std::string::ToString;
 
 pub struct DiskStore {
     dir: String,
@@ -21,10 +22,41 @@ impl Store for DiskStore {
             return false
         }
 
-        match std::fs::write(&path, binary) {
+        if !std::fs::create_dir(&path).is_ok() {
+            error!("failed to create module directory at {:?}", &path);
+            return false
+        }
+
+        let mod_path = path.join("module.wasm");
+
+        match std::fs::write(&mod_path, binary) {
             Ok(_) => true,
             Err(e) => {
-                error!("failed to store module at {:?}: {}", &path, e);
+                error!("failed to store module at {:?}: {}", &mod_path, e);
+                false
+            },
+        }
+    }
+
+    fn attach_variables(&self, module_id: &str, variables: Vec<(String, String)>) -> bool {
+        let path = std::path::Path::new(&self.dir).join(module_id);
+        debug!("storing env vars to module at {:?}", path);
+
+        if !path.exists() {
+            error!("cannot attach env var to missing module at {:?}", &path);
+            return false
+        }
+
+        let env_path = path.join("env.json");
+
+        let result = serde_json::to_string(&variables)
+            .map_err(|e| e.to_string())
+            .and_then(|json| std::fs::write(&env_path, json).map_err(|e| e.to_string()));
+
+        match result {
+            Ok(_) => true,
+            Err(e) => {
+                error!("failed to attach env var to module at {:?}: {}", &env_path, e);
                 false
             },
         }
@@ -34,7 +66,7 @@ impl Store for DiskStore {
         let path = std::path::Path::new(&self.dir).join(module_id);
         debug!("deleting module at {:?}", path);
 
-        match std::fs::remove_file(&path) {
+        match std::fs::remove_dir_all(&path) {
             Ok(_) => true,
             Err(e) => {
                 error!("failed to delete module at {:?}: {}", &path, e);
@@ -43,18 +75,42 @@ impl Store for DiskStore {
         }
     }
 
-    fn retrieve(&self, module_id: &str) -> Option<Vec<u8>> {
+    fn retrieve(&self, module_id: &str) -> Option<(Vec<u8>, Vec<(String, String)>)> {
         let path = std::path::Path::new(&self.dir).join(module_id);
         debug!("resolving module at {:?}", path);
 
-        let res = std::fs::read(&path);
+        let mod_path = path.join("module.wasm");
+        let mod_binary = or_warn(
+            std::fs::read(&mod_path),
+            "unable to load module"
+        )?;
 
-        match res {
-            Ok(data) => Some(data),
-            Err(e) => {
-                warn!("unable to load module {}: {}", module_id, e);
-                None
-            }
+        let env_path = path.join("env.json");
+        let env_vars =
+            if env_path.exists() {
+                or_warn(
+                    std::fs::read_to_string(&env_path)
+                        .map_err(|e| e.to_string())
+                        .and_then(|json| serde_json::from_str(&json).map_err(|e| e.to_string())),
+                    "unable to load env vars"
+                )?
+            } else {
+                Vec::new()
+            };
+
+        Some((mod_binary, env_vars))
+    }
+}
+
+fn or_warn<T, E>(res: Result<T, E>, prefix: &'static str) -> Option<T>
+where
+    E : ToString
+{
+    match res {
+        Ok(v) => Some(v),
+        Err(e) => {
+            warn!("{}: {}", prefix, e.to_string());
+            None
         }
     }
 }

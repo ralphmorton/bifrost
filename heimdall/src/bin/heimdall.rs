@@ -33,13 +33,15 @@ async fn main() {
 
     let auth_layer = RequireAuthorizationLayer::bearer(args.api_key.as_str());
 
-    let handler_store = (handlers::store).layer(&auth_layer);
+    let handler_register = (handlers::register).layer(&auth_layer);
+    let handler_attach_variables = (handlers::attach_variables).layer(&auth_layer);
     let handler_delete = (handlers::delete).layer(&auth_layer);
 
     let app = Router::new()
-        .route("/store/:module_id", routing::post(handler_store))
-        .route("/delete/:module_id", routing::delete(handler_delete))
-        .route("/execute/:module_id", routing::post(handlers::recv))
+        .route("/:module_id/register", routing::post(handler_register))
+        .route("/:module_id/env", routing::post(handler_attach_variables))
+        .route("/:module_id/delete", routing::delete(handler_delete))
+        .route("/:module_id/execute", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(CorsLayer::permissive());

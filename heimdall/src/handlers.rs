@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use log::{debug, error};
 use std::sync::Arc;
 
-pub async fn store(
+pub async fn register(
     Path(module_id): Path<String>,
     mut multipart: Multipart,
     Extension(registry): Extension<Arc<Registry>>,
@@ -38,6 +38,22 @@ pub async fn store(
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         },
+    }
+}
+
+pub async fn attach_variables(
+    Path(module_id): Path<String>,
+    Json(variables): Json<Vec<(String, String)>>,
+    Extension(registry): Extension<Arc<Registry>>,
+) -> StatusCode {
+    debug!("attaching env vars to module {}", module_id);
+
+    let result = registry.attach_variables(module_id.as_str(), variables);
+
+    if result {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
     }
 }
 

@@ -44,7 +44,7 @@ impl Op for AddOne {
 async fn main() {
     use bifrost::dispatcher::Dispatcher;
 
-    let heimdall_execute_url = String::from("http://localhost:8080/execute/greet-server.wasm");
+    let heimdall_execute_url = String::from("http://localhost:8080/greet-example/execute");
     let dispatcher = Dispatcher::create(heimdall_execute_url);
 
     println!("Greet:");

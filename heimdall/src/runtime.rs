@@ -1,3 +1,4 @@
+use crate::registry::Environment;
 use crate::registry::Registry;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -16,19 +17,22 @@ pub fn exec(
 
     match registry.resolve(module_id) {
         None => ExecutionResult::ModuleResolutionError,
-        Some(mod_ref) => match exec_module(&mod_ref.0, &mod_ref.1, label, json) {
+        Some(env_ref) => match exec_env(&*env_ref, label, json) {
             None => ExecutionResult::RuntimeExecutionError,
             Some(res) => ExecutionResult::Success(res),
         },
     }
 }
 
-fn exec_module(
-    engine: &Engine,
-    module: &Module,
+fn exec_env(
+    env: &Environment,
     label: &str,
     json: &serde_json::Value,
 ) -> Option<String> {
+    let engine = &env.engine;
+    let module = &env.module;
+    let variables = &env.variables;
+
     let mut linker = Linker::new(engine);
 
     or_error(
@@ -46,6 +50,7 @@ fn exec_module(
                 .stdout(Box::new(stdout.clone()))
                 .arg(label)
                 .and_then(|b| b.arg(&json))
+                .and_then(|b| b.envs(variables))
                 .map(|b| b.build()),
             "failed to build WASI context",
         )?;

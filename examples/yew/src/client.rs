@@ -11,7 +11,7 @@ struct State {
 
 #[function_component(App)]
 pub fn app() -> Html {
-    let dispatcher = Arc::new(Dispatcher::create("http://localhost:8081/execute/server.wasm".to_string()));
+    let dispatcher = Arc::new(Dispatcher::create("http://localhost:8081/yew-example/execute".to_string()));
 
     let initial_state = State {
         value: Increment { i: 0 },
