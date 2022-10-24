@@ -32,7 +32,9 @@ impl Registry {
 
     pub fn attach_variables(&self, module_id: &str, variables: Vec<(String, String)>) -> bool {
         debug!("attaching env vars to registered module: {}", module_id);
-        self.store.attach_variables(module_id, variables)
+        let result = self.store.attach_variables(module_id, variables);
+        self.modules.invalidate(module_id);
+        result
     }
 
     pub fn delete(&self, module_id: &str) -> bool {
