@@ -26,7 +26,7 @@ impl Capability {
         }
     }
 
-    pub fn add_to_linker<T>(&self, linker: &mut Linker<T>) -> Result<(), Error> {
+    pub fn add_to_linker<T : std::marker::Send>(&self, linker: &mut Linker<T>) -> Result<(), Error> {
         match self {
             Self::MongoDB(mdb) => mdb.add_to_linker(linker),
         }
@@ -59,8 +59,11 @@ impl MongoDB {
         })
     }
 
-    fn add_to_linker<T>(&self, linker: &mut Linker<T>) -> Result<(), Error> {
-        let mongo = bifrost_mongodb_wasmtime::Mongo::new();
-        mongo.add_to_linker(linker)
+    fn add_to_linker<T: std::marker::Send>(&self, linker: &mut Linker<T>) -> Result<(), Error> {
+        bifrost_mongodb_wasmtime::add_to_linker(
+            self.connection_string.clone(),
+            self.database.clone(),
+            linker
+        )
     }
 }

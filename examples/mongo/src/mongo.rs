@@ -9,7 +9,7 @@ struct Query {
 }
 
 impl Op for Query {
-    type Output = i32;
+    type Output = Result<Vec<bson::Document>, u32>;
 
     fn id() -> &'static str {
         "query"
@@ -17,7 +17,8 @@ impl Op for Query {
 
     #[cfg(any(feature = "remote"))]
     fn execute(&self) -> Self::Output {
-        bifrost_mongodb::query(self.i)
+        let doc = bson::Document::new();
+        bifrost_mongodb::find("test", &doc)
     }
 }
 

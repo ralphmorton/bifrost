@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bifrost = { path = "../../bifrost" }
 bifrost-mongodb = { path = "../../bifrost-mongodb", optional = true }
+bson = "2.4.0"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 tokio = { version = "*", features = ["full"], optional = true }
