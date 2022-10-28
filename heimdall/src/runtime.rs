@@ -5,9 +5,9 @@ use axum::response::{IntoResponse, Response};
 use log::{debug, error};
 use std::string::ToString;
 use wasmtime::*;
-use wasmtime_wasi::sync::WasiCtxBuilder;
+use wasmtime_wasi::tokio::WasiCtxBuilder;
 
-pub fn exec(
+pub async fn exec(
     registry: &Registry,
     module_id: &str,
     label: &str,
@@ -17,14 +17,14 @@ pub fn exec(
 
     match registry.resolve(module_id) {
         None => ExecutionResult::ModuleResolutionError,
-        Some(env_ref) => match exec_env(&*env_ref, label, json) {
+        Some(env_ref) => match exec_env(&*env_ref, label, json).await {
             None => ExecutionResult::RuntimeExecutionError,
             Some(res) => ExecutionResult::Success(res),
         },
     }
 }
 
-fn exec_env(
+async fn exec_env(
     env: &Environment,
     label: &str,
     json: &serde_json::Value,
@@ -33,11 +33,18 @@ fn exec_env(
     let module = &env.module;
     let variables = &env.variables;
 
+    let mongo = bifrost_mongodb_wasmtime::Mongo::new();
+
     let mut linker = Linker::new(engine);
 
     or_error(
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s),
+        wasmtime_wasi::tokio::add_to_linker(&mut linker, |s| s),
         "could not add WASI runtime to linker",
+    )?;
+
+    or_error(
+        mongo.add_to_linker(&mut linker),
+        "could not add MongoDB runtime to linker"
     )?;
 
     let json = or_error(serde_json::to_string(json), "serializing runtime payload")?;
@@ -58,7 +65,7 @@ fn exec_env(
         let mut store = Store::new(engine, wasi);
 
         or_error(
-            linker.module(&mut store, "", module),
+            linker.module_async(&mut store, "", module).await,
             "unable to link module",
         )?;
 
@@ -70,7 +77,7 @@ fn exec_env(
         )?;
 
         or_error(
-            entrypoint.call(&mut store, ()),
+            entrypoint.call_async(&mut store, ()).await,
             "unable to execute WASM entrypoint",
         )?;
     }
@@ -122,4 +129,3 @@ impl IntoResponse for ExecutionResult {
         }
     }
 }
-

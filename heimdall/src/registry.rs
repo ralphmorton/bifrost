@@ -2,7 +2,7 @@ use crate::store::Store;
 use log::{debug, error};
 use moka::sync::Cache;
 use std::sync::Arc;
-use wasmtime::{Engine, Module};
+use wasmtime::{Config, Engine, Module};
 
 pub type EnvironmentRef = Arc<Environment>;
 
@@ -54,7 +54,9 @@ impl Registry {
     fn register(&self, module_id: &str) -> Option<EnvironmentRef> {
         let (binary, vars) = self.store.retrieve(module_id)?;
 
-        let engine = Engine::default();
+        let mut config = Config::new();
+        config.async_support(true);
+        let engine = Engine::new(&config).ok()?;
 
         match Module::from_binary(&engine, &binary) {
             Err(e) => {

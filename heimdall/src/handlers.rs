@@ -82,5 +82,5 @@ pub async fn recv(
         module_id, label, json
     );
 
-    runtime::exec(&registry, &module_id, label.as_str(), &json)
+    runtime::exec(&registry, &module_id, label.as_str(), &json).await
 }
