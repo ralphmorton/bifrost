@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.66"
 axum = { version = "0.5.17", features = ["multipart"] }
 bifrost-mongodb-wasmtime = { path = "../bifrost-mongodb-wasmtime" }
 clap = { version = "4.0.17", features = ["derive"] }

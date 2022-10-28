@@ -1,6 +1,8 @@
+use crate::capability::{Capability, CapabilityInitError};
 use crate::store::Store;
 use log::{debug, error};
 use moka::sync::Cache;
+use std::collections::HashMap;
 use std::sync::Arc;
 use wasmtime::{Config, Engine, Module};
 
@@ -9,7 +11,8 @@ pub type EnvironmentRef = Arc<Environment>;
 pub struct Environment {
     pub engine: Engine,
     pub module: Module,
-    pub variables: Vec<(String, String)>
+    pub variables: Vec<(String, String)>,
+    pub capabilities: Vec<Capability>,
 }
 
 pub struct Registry {
@@ -30,9 +33,31 @@ impl Registry {
         self.store.store(module_id, binary)
     }
 
-    pub fn attach_variables(&self, module_id: &str, variables: Vec<(String, String)>) -> bool {
+    pub fn attach_variables(&self, module_id: &str, variables: &Vec<(String, String)>) -> bool {
         debug!("attaching env vars to registered module: {}", module_id);
         let result = self.store.attach_variables(module_id, variables);
+        self.modules.invalidate(module_id);
+        result
+    }
+
+    pub fn attach_capabilities(
+        &self,
+        module_id: &str,
+        capabilities: &HashMap<String, HashMap<String, String>>,
+    ) -> bool {
+        debug!("attaching capabilities to registered module: {}", module_id);
+
+        for (cap, args) in capabilities.iter() {
+            match Capability::from_config(cap, args) {
+                Ok(_) => (),
+                Err(e) => {
+                    error!("cannot attach invalid capabilities: {:?}", e);
+                    return false;
+                }
+            }
+        }
+
+        let result = self.store.attach_capabilities(module_id, capabilities);
         self.modules.invalidate(module_id);
         result
     }
@@ -52,7 +77,13 @@ impl Registry {
     }
 
     fn register(&self, module_id: &str) -> Option<EnvironmentRef> {
-        let (binary, vars) = self.store.retrieve(module_id)?;
+        let (binary, vars, caps) = self.store.retrieve(module_id)?;
+
+        let caps = caps
+            .iter()
+            .map(|(cap, args)| Capability::from_config(cap, args))
+            .collect::<Result<Vec<Capability>, CapabilityInitError>>()
+            .ok()?;
 
         let mut config = Config::new();
         config.async_support(true);
@@ -62,18 +93,17 @@ impl Registry {
             Err(e) => {
                 error!("unable to initialize module from store: {:?}", e);
                 None
-            },
+            }
             Ok(module) => {
-                let env_ref = Arc::new(
-                    Environment {
-                        engine,
-                        module,
-                        variables: vars
-                    }
-                );
+                let env_ref = Arc::new(Environment {
+                    engine,
+                    module,
+                    variables: vars,
+                    capabilities: caps,
+                });
                 self.modules.insert(module_id.to_string(), env_ref.clone());
                 Some(env_ref)
-            },
+            }
         }
     }
 }

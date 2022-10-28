@@ -1,7 +1,7 @@
 use axum::extract::Extension;
 use axum::handler::Handler;
-use axum::Router;
 use axum::routing;
+use axum::Router;
 use axum::Server;
 use clap::Parser;
 use heimdall::handlers;
@@ -35,11 +35,16 @@ async fn main() {
 
     let handler_register = (handlers::register).layer(&auth_layer);
     let handler_attach_variables = (handlers::attach_variables).layer(&auth_layer);
+    let handler_attach_capabilities = (handlers::attach_capabilities).layer(&auth_layer);
     let handler_delete = (handlers::delete).layer(&auth_layer);
 
     let app = Router::new()
         .route("/:module_id/register", routing::post(handler_register))
         .route("/:module_id/env", routing::post(handler_attach_variables))
+        .route(
+            "/:module_id/caps",
+            routing::post(handler_attach_capabilities),
+        )
         .route("/:module_id/delete", routing::delete(handler_delete))
         .route("/:module_id/execute", routing::post(handlers::recv))
         .layer(Extension(Arc::new(registry)))

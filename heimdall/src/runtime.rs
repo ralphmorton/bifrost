@@ -24,16 +24,11 @@ pub async fn exec(
     }
 }
 
-async fn exec_env(
-    env: &Environment,
-    label: &str,
-    json: &serde_json::Value,
-) -> Option<String> {
+async fn exec_env(env: &Environment, label: &str, json: &serde_json::Value) -> Option<String> {
     let engine = &env.engine;
     let module = &env.module;
     let variables = &env.variables;
-
-    let mongo = bifrost_mongodb_wasmtime::Mongo::new();
+    let capabilities = &env.capabilities;
 
     let mut linker = Linker::new(engine);
 
@@ -42,10 +37,12 @@ async fn exec_env(
         "could not add WASI runtime to linker",
     )?;
 
-    or_error(
-        mongo.add_to_linker(&mut linker),
-        "could not add MongoDB runtime to linker"
-    )?;
+    for cap in capabilities.iter() {
+        or_error(
+            cap.add_to_linker(&mut linker),
+            "could not add MongoDB runtime to linker",
+        )?;
+    }
 
     let json = or_error(serde_json::to_string(json), "serializing runtime payload")?;
 

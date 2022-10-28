@@ -1,3 +1,4 @@
+pub mod capability;
 pub mod handlers;
 pub mod registry;
 pub mod runtime;
