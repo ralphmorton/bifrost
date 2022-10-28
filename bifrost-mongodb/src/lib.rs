@@ -5,6 +5,7 @@ mod raw {
     extern "C" {
         pub fn find(query_ptr: u32, query_len: u32, handle_ptr: u32) -> u32;
         pub fn read(handle: u32, buf_ptr: u32, buf_len: u32, cont_ptr: u32) -> u32;
+        pub fn close(handle: u32) -> u32;
     }
 }
 
@@ -33,6 +34,8 @@ pub fn find(collection: &str, doc: &bson::Document) -> Result<Vec<bson::Document
             raw.append(&mut res_raw);
             cont = res_cont;
         }
+
+        raw::close(handle);
 
         rmp_serde::from_slice(&raw).or(Err(10))
     }

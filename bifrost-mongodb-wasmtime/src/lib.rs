@@ -47,6 +47,7 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
 
     let state_find = state.clone();
     let state_read = state.clone();
+    let state_close = state.clone();
 
     linker.func_wrap3_async(
         MODULE,
@@ -115,6 +116,20 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
         }
     )?;
 
+    linker.func_wrap1_async(
+        MODULE,
+        "close",
+        move |mut _caller: Caller<'_, T>, handle: u32| {
+            let state = state_close.clone();
+            Box::new(async move {
+                match close(&state, handle) {
+                    Ok(_) => return SUCCESS,
+                    Err(e) => return e,
+                }
+            })
+        }
+    )?;
+
     Ok(())
 }
 
@@ -172,4 +187,10 @@ fn read(state: &Arc<State>, handle: Handle, buf_len: usize) -> Result<Vec<u8>, u
     );
 
     Ok(res)
+}
+
+fn close(state: &Arc<State>, handle: Handle) -> Result<(), u32> {
+    let mut responses = state.responses.write().or(Err(ERR_READRESPONSEFAILED))?;
+    responses.remove(&handle).ok_or(ERR_INVALIDHANDLE)?;
+    Ok(())
 }
