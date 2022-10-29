@@ -30,6 +30,13 @@ impl Op for Query {
 
         let insert_res = bifrost_mongodb::insert("test", &inserts)?;
 
+        let upd_filter = bson::Document::new();
+        let mut set_doc = bson::Document::new();
+        set_doc.insert("new_field", "updated via bifrost");
+        let mut upd_doc = bson::Document::new();
+        upd_doc.insert("$set", set_doc);
+        bifrost_mongodb::update("test", upd_filter, upd_doc)?;
+
         let doc = bson::Document::new();
         let find_res = bifrost_mongodb::find("test", &doc)?;
 

@@ -50,6 +50,7 @@ pub fn add_to_linker<T: std::marker::Send>(
     let state_find = state.clone();
     let state_insert = state.clone();
     let state_delete = state.clone();
+    let state_update = state.clone();
     let state_read = state.clone();
     let state_close = state.clone();
 
@@ -143,6 +144,35 @@ pub fn add_to_linker<T: std::marker::Send>(
                 }
 
                 match delete(&state, &buf).await {
+                    Ok(_) => SUCCESS,
+                    Err(e) => return e,
+                }
+            })
+        },
+    )?;
+
+    linker.func_wrap2_async(
+        MODULE,
+        "update",
+        move |mut caller: Caller<'_, T>, query_ptr: u32, query_len: u32| {
+            let state = state_update.clone();
+            Box::new(async move {
+                let memory = match caller.get_export(MEMORY) {
+                    Some(Extern::Memory(mem)) => mem,
+                    _ => return ERR_MEMORYACCESSFAILED,
+                };
+                let mut ctx = caller.as_context_mut();
+
+                let mut buf = vec![0u8; query_len as usize];
+                let read_res = memory
+                    .read(&mut ctx, query_ptr as usize, buf.as_mut_slice())
+                    .ok();
+
+                if read_res.is_none() {
+                    return ERR_QUERYREADFAILED;
+                }
+
+                match update(&state, &buf).await {
                     Ok(_) => SUCCESS,
                     Err(e) => return e,
                 }
@@ -260,6 +290,23 @@ async fn delete(state: &Arc<State>, raw: &Vec<u8>) -> Result<(), u32> {
 
     let coll = get_collection(state, &collection).await?;
     coll.delete_many(docs, None)
+        .await
+        .or(Err(ERR_QUERYFAILED))?;
+
+    Ok(())
+}
+
+async fn update(state: &Arc<State>, raw: &Vec<u8>) -> Result<(), u32> {
+    let q: (String, bson::Document, bson::Document) = rmp_serde::from_slice(&raw)
+        .ok()
+        .ok_or(ERR_QUERYDECODEFAILED)?;
+
+    let collection = q.0;
+    let filter = q.1;
+    let update = q.2;
+
+    let coll = get_collection(state, &collection).await?;
+    coll.update_many(filter, mongodb::options::UpdateModifications::Document(update), None)
         .await
         .or(Err(ERR_QUERYFAILED))?;
 
