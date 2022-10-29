@@ -32,21 +32,24 @@ struct State {
     connection_string: String,
     database: String,
     responses: RwLock<HashMap<Handle, Data>>,
-    handle_gen: AtomicU32
+    handle_gen: AtomicU32,
 }
 
-pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database: String, linker: &mut Linker<T>) -> Result<(), Error> {
-    let state = Arc::new(
-        State {
-            connection_string,
-            database,
-            responses: RwLock::new(HashMap::new()),
-            handle_gen: AtomicU32::new(0)
-        }
-    );
+pub fn add_to_linker<T: std::marker::Send>(
+    connection_string: String,
+    database: String,
+    linker: &mut Linker<T>,
+) -> Result<(), Error> {
+    let state = Arc::new(State {
+        connection_string,
+        database,
+        responses: RwLock::new(HashMap::new()),
+        handle_gen: AtomicU32::new(0),
+    });
 
     let state_find = state.clone();
     let state_insert = state.clone();
+    let state_delete = state.clone();
     let state_read = state.clone();
     let state_close = state.clone();
 
@@ -63,7 +66,9 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                 let mut ctx = caller.as_context_mut();
 
                 let mut buf = vec![0u8; query_len as usize];
-                let read_res = memory.read(&mut ctx, query_ptr as usize, buf.as_mut_slice()).ok();
+                let read_res = memory
+                    .read(&mut ctx, query_ptr as usize, buf.as_mut_slice())
+                    .ok();
 
                 if read_res.is_none() {
                     return ERR_QUERYREADFAILED;
@@ -75,13 +80,11 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                             Ok(_) => return SUCCESS,
                             Err(_) => return ERR_MEMORYACCESSFAILED,
                         }
-                    },
-                    Err(e) => {
-                        return e
-                    },
+                    }
+                    Err(e) => return e,
                 }
             })
-        }
+        },
     )?;
 
     linker.func_wrap3_async(
@@ -97,7 +100,9 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                 let mut ctx = caller.as_context_mut();
 
                 let mut buf = vec![0u8; query_len as usize];
-                let read_res = memory.read(&mut ctx, query_ptr as usize, buf.as_mut_slice()).ok();
+                let read_res = memory
+                    .read(&mut ctx, query_ptr as usize, buf.as_mut_slice())
+                    .ok();
 
                 if read_res.is_none() {
                     return ERR_QUERYREADFAILED;
@@ -109,13 +114,40 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                             Ok(_) => return SUCCESS,
                             Err(_) => return ERR_MEMORYACCESSFAILED,
                         }
-                    },
-                    Err(e) => {
-                        return e
-                    },
+                    }
+                    Err(e) => return e,
                 }
             })
-        }
+        },
+    )?;
+
+    linker.func_wrap2_async(
+        MODULE,
+        "delete",
+        move |mut caller: Caller<'_, T>, query_ptr: u32, query_len: u32| {
+            let state = state_delete.clone();
+            Box::new(async move {
+                let memory = match caller.get_export(MEMORY) {
+                    Some(Extern::Memory(mem)) => mem,
+                    _ => return ERR_MEMORYACCESSFAILED,
+                };
+                let mut ctx = caller.as_context_mut();
+
+                let mut buf = vec![0u8; query_len as usize];
+                let read_res = memory
+                    .read(&mut ctx, query_ptr as usize, buf.as_mut_slice())
+                    .ok();
+
+                if read_res.is_none() {
+                    return ERR_QUERYREADFAILED;
+                }
+
+                match delete(&state, &buf).await {
+                    Ok(_) => SUCCESS,
+                    Err(e) => return e,
+                }
+            })
+        },
     )?;
 
     linker.func_wrap4_async(
@@ -131,24 +163,24 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                 let mut ctx = caller.as_context_mut();
 
                 match read(&state, handle, buf_len as usize) {
-                    Ok(bytes) => {
-                        match memory.write(&mut ctx, buf_ptr as usize, &bytes) {
-                            Ok(_) => {
-                                let cont : u32 = if bytes.len() == buf_len as usize { 1 } else { 0 };
-                                match memory.write(&mut ctx, cont_ptr as usize, &cont.to_le_bytes()) {
-                                    Ok(_) => return SUCCESS,
-                                    Err(_) => return ERR_MEMORYACCESSFAILED,
-                                }
-                            },
-                            Err(_) => return ERR_MEMORYACCESSFAILED,
+                    Ok(bytes) => match memory.write(&mut ctx, buf_ptr as usize, &bytes) {
+                        Ok(_) => {
+                            let cont: u32 = if bytes.len() == buf_len as usize {
+                                1
+                            } else {
+                                0
+                            };
+                            match memory.write(&mut ctx, cont_ptr as usize, &cont.to_le_bytes()) {
+                                Ok(_) => return SUCCESS,
+                                Err(_) => return ERR_MEMORYACCESSFAILED,
+                            }
                         }
+                        Err(_) => return ERR_MEMORYACCESSFAILED,
                     },
-                    Err(e) => {
-                        return e
-                    },
+                    Err(e) => return e,
                 }
             })
-        }
+        },
     )?;
 
     linker.func_wrap1_async(
@@ -162,20 +194,25 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                     Err(e) => return e,
                 }
             })
-        }
+        },
     )?;
 
     Ok(())
 }
 
 async fn find(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
-    let q : (String, bson::Document) = rmp_serde::from_slice(&raw).ok().ok_or(ERR_QUERYDECODEFAILED)?;
+    let q: (String, bson::Document) = rmp_serde::from_slice(&raw)
+        .ok()
+        .ok_or(ERR_QUERYDECODEFAILED)?;
 
     let collection = q.0;
     let filter = q.1;
 
     let coll = get_collection(state, &collection).await?;
-    let mut cursor = coll.find(Some(filter), None).await.or(Err(ERR_QUERYFAILED))?;
+    let mut cursor = coll
+        .find(Some(filter), None)
+        .await
+        .or(Err(ERR_QUERYFAILED))?;
 
     let mut docs = Vec::new();
 
@@ -190,18 +227,43 @@ async fn find(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
 }
 
 async fn insert(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
-    let q : (String, Vec<bson::Document>) = rmp_serde::from_slice(&raw).ok().ok_or(ERR_QUERYDECODEFAILED)?;
+    let q: (String, Vec<bson::Document>) = rmp_serde::from_slice(&raw)
+        .ok()
+        .ok_or(ERR_QUERYDECODEFAILED)?;
 
     let collection = q.0;
     let docs = q.1;
 
     let coll = get_collection(state, &collection).await?;
-    let res = coll.insert_many(docs, None).await.or(Err(ERR_QUERYFAILED))?;
-    let inserted : HashMap<u32, &bson::Bson> = res.inserted_ids.iter().map(|(k, v)| (*k as u32, v)).collect();
+    let res = coll
+        .insert_many(docs, None)
+        .await
+        .or(Err(ERR_QUERYFAILED))?;
+    let inserted: HashMap<u32, &bson::Bson> = res
+        .inserted_ids
+        .iter()
+        .map(|(k, v)| (*k as u32, v))
+        .collect();
 
     let raw = rmp_serde::to_vec(&inserted).or(Err(ERR_SERIALIZEFAILED))?;
 
     create_response(state, raw)
+}
+
+async fn delete(state: &Arc<State>, raw: &Vec<u8>) -> Result<(), u32> {
+    let q: (String, bson::Document) = rmp_serde::from_slice(&raw)
+        .ok()
+        .ok_or(ERR_QUERYDECODEFAILED)?;
+
+    let collection = q.0;
+    let docs = q.1;
+
+    let coll = get_collection(state, &collection).await?;
+    coll.delete_many(docs, None)
+        .await
+        .or(Err(ERR_QUERYFAILED))?;
+
+    Ok(())
 }
 
 fn read(state: &Arc<State>, handle: Handle, buf_len: usize) -> Result<Vec<u8>, u32> {
@@ -220,8 +282,8 @@ fn read(state: &Arc<State>, handle: Handle, buf_len: usize) -> Result<Vec<u8>, u
         handle,
         Data {
             bytes: data.bytes,
-            pos: (slice_end - data.pos) + data.pos
-        }
+            pos: (slice_end - data.pos) + data.pos,
+        },
     );
 
     Ok(res)
@@ -240,15 +302,20 @@ fn create_response(state: &Arc<State>, data: Vec<u8>) -> Result<Handle, u32> {
         handle,
         Data {
             bytes: data,
-            pos: 0
-        }
+            pos: 0,
+        },
     );
 
     Ok(handle)
 }
 
-async fn get_collection(state: &Arc<State>, collection: &str) -> Result<mongodb::Collection<bson::Document>, u32> {
-    let client = mongodb::Client::with_uri_str(&state.connection_string).await.or(Err(ERR_CONNECTFAILED))?;
+async fn get_collection(
+    state: &Arc<State>,
+    collection: &str,
+) -> Result<mongodb::Collection<bson::Document>, u32> {
+    let client = mongodb::Client::with_uri_str(&state.connection_string)
+        .await
+        .or(Err(ERR_CONNECTFAILED))?;
     let db = client.database(&state.database);
     let coll = db.collection::<bson::Document>(&collection);
     Ok(coll)

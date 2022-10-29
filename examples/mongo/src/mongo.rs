@@ -17,6 +17,9 @@ impl Op for Query {
 
     #[cfg(any(feature = "remote"))]
     fn execute(&self) -> Self::Output {
+        let del = bson::Document::new();
+        bifrost_mongodb::delete("test", del)?;
+
         let mut insert1 = bson::Document::new();
         insert1.insert("foo", 1);
         insert1.insert("bar", "inserted via bifrost");

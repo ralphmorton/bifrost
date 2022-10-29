@@ -6,6 +6,7 @@ mod raw {
     extern "C" {
         pub fn find(query_ptr: u32, query_len: u32, handle_ptr: u32) -> u32;
         pub fn insert(query_ptr: u32, query_len: u32, handle_ptr: u32) -> u32;
+        pub fn delete(query_ptr: u32, query_len: u32) -> u32;
         pub fn read(handle: u32, buf_ptr: u32, buf_len: u32, cont_ptr: u32) -> u32;
         pub fn close(handle: u32) -> u32;
     }
@@ -72,6 +73,23 @@ pub fn insert(collection: &str, docs: &Vec<bson::Document>) -> Result<HashMap<u3
       raw::close(handle);
 
       rmp_serde::from_slice(&raw).or(Err(10))
+  }
+}
+
+pub fn delete(collection: &str, doc: bson::Document) -> Result<(), u32> {
+  let data = rmp_serde::to_vec(&(collection, doc)).unwrap();
+
+  unsafe {
+      let res = raw::delete(
+          data.as_ptr() as u32,
+          data.len() as u32
+      );
+
+      if res != 0 {
+          return Err(res);
+      }
+
+      Ok(())
   }
 }
 
