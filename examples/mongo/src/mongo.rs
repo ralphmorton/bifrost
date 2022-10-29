@@ -9,7 +9,7 @@ struct Query {
 }
 
 impl Op for Query {
-    type Output = Result<Vec<bson::Document>, u32>;
+    type Output = Result<(std::collections::HashMap<u32, bson::Bson>, Vec<bson::Document>), u32>;
 
     fn id() -> &'static str {
         "query"
@@ -17,8 +17,20 @@ impl Op for Query {
 
     #[cfg(any(feature = "remote"))]
     fn execute(&self) -> Self::Output {
+        let mut insert1 = bson::Document::new();
+        insert1.insert("foo", 1);
+        insert1.insert("bar", "inserted via bifrost");
+        let mut insert2 = bson::Document::new();
+        insert2.insert("foo", 2);
+        insert2.insert("bar", "inserted via bifrost");
+        let inserts = vec![insert1, insert2];
+
+        let insert_res = bifrost_mongodb::insert("test", &inserts)?;
+
         let doc = bson::Document::new();
-        bifrost_mongodb::find("test", &doc)
+        let find_res = bifrost_mongodb::find("test", &doc)?;
+
+        Ok((insert_res, find_res))
     }
 }
 

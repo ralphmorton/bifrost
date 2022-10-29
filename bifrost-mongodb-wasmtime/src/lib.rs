@@ -46,6 +46,7 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
     );
 
     let state_find = state.clone();
+    let state_insert = state.clone();
     let state_read = state.clone();
     let state_close = state.clone();
 
@@ -69,6 +70,40 @@ pub fn add_to_linker<T : std::marker::Send>(connection_string: String, database:
                 }
 
                 match find(&state, &buf).await {
+                    Ok(handle) => {
+                        match memory.write(&mut ctx, handle_ptr as usize, &handle.to_le_bytes()) {
+                            Ok(_) => return SUCCESS,
+                            Err(_) => return ERR_MEMORYACCESSFAILED,
+                        }
+                    },
+                    Err(e) => {
+                        return e
+                    },
+                }
+            })
+        }
+    )?;
+
+    linker.func_wrap3_async(
+        MODULE,
+        "insert",
+        move |mut caller: Caller<'_, T>, query_ptr: u32, query_len: u32, handle_ptr: u32| {
+            let state = state_insert.clone();
+            Box::new(async move {
+                let memory = match caller.get_export(MEMORY) {
+                    Some(Extern::Memory(mem)) => mem,
+                    _ => return ERR_MEMORYACCESSFAILED,
+                };
+                let mut ctx = caller.as_context_mut();
+
+                let mut buf = vec![0u8; query_len as usize];
+                let read_res = memory.read(&mut ctx, query_ptr as usize, buf.as_mut_slice()).ok();
+
+                if read_res.is_none() {
+                    return ERR_QUERYREADFAILED;
+                }
+
+                match insert(&state, &buf).await {
                     Ok(handle) => {
                         match memory.write(&mut ctx, handle_ptr as usize, &handle.to_le_bytes()) {
                             Ok(_) => return SUCCESS,
@@ -139,9 +174,7 @@ async fn find(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
     let collection = q.0;
     let filter = q.1;
 
-    let client = mongodb::Client::with_uri_str(&state.connection_string).await.or(Err(ERR_CONNECTFAILED))?;
-    let db = client.database(&state.database);
-    let coll = db.collection::<bson::Document>(&collection);
+    let coll = get_collection(state, &collection).await?;
     let mut cursor = coll.find(Some(filter), None).await.or(Err(ERR_QUERYFAILED))?;
 
     let mut docs = Vec::new();
@@ -153,17 +186,22 @@ async fn find(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
 
     let raw = rmp_serde::to_vec(&docs).or(Err(ERR_SERIALIZEFAILED))?;
 
-    let handle = state.handle_gen.fetch_add(1, Ordering::SeqCst);
-    let mut responses = state.responses.write().or(Err(ERR_PUSHRESPONSEFAILED))?;
-    responses.insert(
-        handle,
-        Data {
-            bytes: raw,
-            pos: 0
-        }
-    );
+    create_response(state, raw)
+}
 
-    Ok(handle)
+async fn insert(state: &Arc<State>, raw: &Vec<u8>) -> Result<Handle, u32> {
+    let q : (String, Vec<bson::Document>) = rmp_serde::from_slice(&raw).ok().ok_or(ERR_QUERYDECODEFAILED)?;
+
+    let collection = q.0;
+    let docs = q.1;
+
+    let coll = get_collection(state, &collection).await?;
+    let res = coll.insert_many(docs, None).await.or(Err(ERR_QUERYFAILED))?;
+    let inserted : HashMap<u32, &bson::Bson> = res.inserted_ids.iter().map(|(k, v)| (*k as u32, v)).collect();
+
+    let raw = rmp_serde::to_vec(&inserted).or(Err(ERR_SERIALIZEFAILED))?;
+
+    create_response(state, raw)
 }
 
 fn read(state: &Arc<State>, handle: Handle, buf_len: usize) -> Result<Vec<u8>, u32> {
@@ -193,4 +231,25 @@ fn close(state: &Arc<State>, handle: Handle) -> Result<(), u32> {
     let mut responses = state.responses.write().or(Err(ERR_READRESPONSEFAILED))?;
     responses.remove(&handle).ok_or(ERR_INVALIDHANDLE)?;
     Ok(())
+}
+
+fn create_response(state: &Arc<State>, data: Vec<u8>) -> Result<Handle, u32> {
+    let handle = state.handle_gen.fetch_add(1, Ordering::SeqCst);
+    let mut responses = state.responses.write().or(Err(ERR_PUSHRESPONSEFAILED))?;
+    responses.insert(
+        handle,
+        Data {
+            bytes: data,
+            pos: 0
+        }
+    );
+
+    Ok(handle)
+}
+
+async fn get_collection(state: &Arc<State>, collection: &str) -> Result<mongodb::Collection<bson::Document>, u32> {
+    let client = mongodb::Client::with_uri_str(&state.connection_string).await.or(Err(ERR_CONNECTFAILED))?;
+    let db = client.database(&state.database);
+    let coll = db.collection::<bson::Document>(&collection);
+    Ok(coll)
 }
